@@ -22,6 +22,15 @@ candidatos_2020 <- read.csv("data/consulta_cand_2020_BRASIL.csv", sep = ";", fil
 eleitorado_2020 <- read.csv("data/eleitorado_local_votacao_2020.csv", sep = ";", fileEncoding = "Latin1")
 partidos_2020 <- read.csv("data/votacao_partido_munzona_2020_BRASIL.csv", sep = ";", fileEncoding = "Latin1")
 
+rn <- read.csv("/home/xedar/Downloads/votacao_candidato_munzona_2020/votacao_candidato_munzona_2020_RN.csv", sep = ";", fileEncoding = "Latin1")
+teste_2016 <- read.csv("/home/xedar/Downloads/votacao_candidato_munzona_2016/votacao_candidato_munzona_2016_BRASIL.csv", sep = ";", fileEncoding = "Latin1")
+
+# Descobri que tem municípios sem os dados da votação para vereador. Tem que testar.
+teste <- votacao_2020 %>%
+  group_by(NM_MUNICIPIO) %>%
+  summarise(n_vereadores_candidatos = sum(DS_CARGO == "Vereador")) %>%
+  filter(n_vereadores_candidatos == 0)
+
 # Limpar dados
 eleitorado_2020 <- eleitorado_2020 %>%
   group_by(CD_MUNICIPIO) %>%

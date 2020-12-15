@@ -1,0 +1,257 @@
+---
+title: "Análise do resultado eleitoral da Juventude do PT"
+author: 
+  - Alexandre Freitas^[Militante da Juventude do PT de Belo Horizonte / MG, alexandrefreitas92@gmail.com]
+  - João Vitor Leite Rodrigues^[Militante da Juventude do PT de Belo Horizonte / MG, jvleiterodrigues@gmail.com]
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+
+```{r, message= FALSE}
+library(tidyverse)
+library(openxlsx)
+library(readxl)
+library(DT)
+library(plotly)
+library(knitr)
+
+vereadores_jovens_2020 <- read_csv("data/vereadores_jovens_2020.csv")
+vereadores_jovens_2016 <- read_csv("data/vereadores_jovens_2016.csv")
+
+#vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% summarise(format(sum(votos_nominais), big.interval = 3L, big.mark=".", decimal.mark = ","))
+#format(vereadores_jovens_2016 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)) - vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% #summarise(sum(votos_nominais)), big.interval = 3L, big.mark=".", decimal.mark = ",")
+
+#paste(format(round((vereadores_jovens_2016 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)) - vereadores_jovens_2020 %>% filter(SG_PARTIDO == #"PT") %>% summarise(sum(votos_nominais))) / vereadores_jovens_2016 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)) * 100, digits = 2), #big.interval = 3L, big.mark=".", decimal.mark = ","), "%", sep = "")
+
+#vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(eleito=="Sim" & porte_municipio == "Grande"))
+```
+
+Os(as) jovens candidatos(as) a vereador(a) do PT tiveram em 2020 mais ou menos votos do que em 2016? Quantos foram eleitos(as)? Há diferença no porte do município para o resultado eleitoral? Qual foi o perfil dos(as) jovens eleitos(as)? Esse perfil foi diferente do que em 2016? Se sim, essa mudança se deu especificamente no PT ou também se deu no conjunto dos(as) jovens eleitos(as)? Essas são algumas das perguntas que este texto busca responder.
+
+## Votação dos jovens petistas em 2020
+
+Jovens Petistas tiveram ao todo `r vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% summarise(format(sum(votos_nominais), big.interval = 3L, big.mark=".", decimal.mark = ","))` votos para vereador, elegendo um total de `r vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(eleito == "Sim"))` vereadores. Comparado a 2016 o resultado apresentou uma estabilidade com uma pequena queda de `r format(vereadores_jovens_2016 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)) - vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)), big.interval = 3L, big.mark=".", decimal.mark = ",")` votos, o equivalente a apenas `r paste(format(round((vereadores_jovens_2016 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)) - vereadores_jovens_2020 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais))) / vereadores_jovens_2016 %>% filter(SG_PARTIDO == "PT") %>% summarise(sum(votos_nominais)) * 100, digits = 2), big.interval = 3L, big.mark=".", decimal.mark = ","), "%", sep = "")`. Apesar da estabilidade houve uma mudança na composição das cadeiras ocupadas pelos jovens a depender do porte do município. Para a análise dividimos os municípios entre municípios pequenos com menos de 50 mil habitantes, municípios médios com mais de 50 mil habitantes e com menos de 200 mil eleitores, e municípios grandes com mais de 200 mil eleitores. Decidimos utilizar a medida de número de eleitores para a definição de municípios grandes pelo fato de ser o critério do TSE para definição dos municípios que possuem segundo turno.
+
+O número de jovens eleitos para cidades grandes passou de 12 para 20, um aumento de 66,7%.
+
+```{r, message=FALSE}
+# Evolução do Número de jovens petistas eleitos
+votacao_vereadores_jovens_pt_2020 <- vereadores_jovens_2020 %>%
+  ungroup() %>%
+  filter(SG_PARTIDO == "PT") %>%
+  group_by(porte_municipio) %>%
+  summarise(`Eleitos 2020` = sum(eleito == "Sim"),
+            `Votação 2020` = sum(votos_nominais),
+            `Ano 2` = "2020") %>%
+  select(`Ano 2`, everything()) %>%
+  select(-porte_municipio)
+
+votacao_vereadores_jovens_pt_2016 <- vereadores_jovens_2016 %>%
+  ungroup() %>%
+  filter(SG_PARTIDO == "PT") %>%
+  group_by(porte_municipio) %>%
+  summarise(`Eleitos 2016` = sum(eleito == "Sim"),
+            `Votação 2016` = sum(votos_nominais),
+            `Ano 1` = "2016") %>%
+  select(porte_municipio,`Ano 1`, everything()) %>%
+  rename(`Porte Município` = porte_municipio)
+
+votacao_vereadores_jovens_pt_2020_2016 <- votacao_vereadores_jovens_pt_2016 %>%
+  bind_cols(votacao_vereadores_jovens_pt_2020)
+
+kable(votacao_vereadores_jovens_pt_2020_2016, 
+      caption = "Votação dos jovens petistas para vereador nos anos de 2016 e 2020",
+      format.args = list(big.interval = 3L, big.mark=".", decimal.mark = ",")
+      )
+```
+ 
+Além do crescimento do número de vereadores nas cidades grandes, um ponto de destaque a ser analisado é a grande mudança no perfil dos(as) jovens eleitos(as). Nossos jovens eleitos são cada vez mais mulheres e negros(as). 
+
+```{r, message=FALSE, warning=FALSE}
+# Análise PT
+
+# 2020
+# Gênero
+genero_pt_por_porte_2020 <- vereadores_jovens_2020 %>%
+  ungroup() %>%
+  filter(SG_PARTIDO == "PT" & eleito == "Sim") %>%
+  group_by(porte_municipio) %>%
+  count(DS_GENERO) %>%
+  mutate(total = sum(n),
+         percentual = n / total * 100,
+         percentual = round(percentual, digits = 2)) %>%
+  mutate(porte_municipio = factor(porte_municipio, levels = c("Pequeno", "Médio", "Grande")))
+
+# Gráfico
+fig_genero_pt_por_porte_2020 <- genero_pt_por_porte_2020 %>%
+  group_by(DS_GENERO) %>%
+  plot_ly(x=~porte_municipio, y=~percentual,
+          type="scatter",color=~DS_GENERO, mode="lines+markers", width = "49%") %>%
+  layout(yaxis = list(range = c(0,100), title = "%"),
+         xaxis = list(title = "Porte do município"),
+         title = "Gênero dos(as) jovens vereadores(as) do PT\neleitos(as) por porte do município em 2020",
+         margin = list(t = 100))
+fig_genero_pt_por_porte_2020
+
+# 2016
+# Gênero
+genero_pt_por_porte_2016 <- vereadores_jovens_2016 %>%
+  ungroup() %>%
+  filter(SG_PARTIDO == "PT" & eleito == "Sim") %>%
+  group_by(porte_municipio) %>%
+  count(DS_GENERO) %>%
+  mutate(total = sum(n),
+         percentual = n / total * 100,
+         percentual = round(percentual, digits = 2)) %>%
+  mutate(porte_municipio = factor(porte_municipio, levels = c("Pequeno", "Médio", "Grande")))
+
+# Gráfico
+fig_genero_pt_por_porte_2016 <- genero_pt_por_porte_2016 %>%
+  group_by(DS_GENERO) %>%
+  plot_ly(x=~porte_municipio, y=~percentual,
+          type="scatter",color=~DS_GENERO, mode="lines+markers", width = "49%") %>%
+  layout(yaxis = list(range = c(0,100), title = "%"),
+         xaxis = list(title = "Porte do município"),
+         title = "Gênero dos(as) jovens vereadores(as) do PT\neleitos(as) por porte do município em 2016",
+         margin = list(t = 100))
+
+fig_genero_pt_por_porte_2016
+```
+
+Ao analisarmos a composição de gênero e cor/raça no conjunto de todos os jovens eleitos de todos os partidos políticos vemos que essa mudança não só não ocorreu como a disparidade de homens brancos eleitos continua enorme.
+
+```{r, message=FALSE, warning=FALSE}
+# Análise geral
+
+# Gênero
+genero_geral_por_porte <- vereadores_jovens_2020 %>%
+  ungroup() %>%
+  filter(eleito == "Sim") %>%
+  group_by(porte_municipio) %>%
+  count(DS_GENERO) %>%
+  mutate(total = sum(n),
+         percentual = n / total * 100,
+         percentual = round(percentual, digits = 2)) %>%
+  mutate(porte_municipio = factor(porte_municipio, levels = c("Pequeno", "Médio", "Grande")))
+
+# Gráfico
+fig_genero_geral_por_porte <- genero_geral_por_porte %>%
+  group_by(DS_GENERO) %>%
+  plot_ly(x=~porte_municipio, y=~percentual,
+          type="scatter",color=~DS_GENERO, mode="lines+markers") %>%
+  layout(yaxis = list(range = c(0,100), title = "%"),
+         xaxis = list(title = "Porte do município"),
+         title = "Gênero dos(as) jovens vereadores(as) eleitos(as)\npor porte do município em 2020",
+         margin = list(t = 100))
+fig_genero_geral_por_porte
+```
+
+
+Ao analisarmos os dados de cor/raça percebemos fica ainda mais evidente essa mudança de composição, de forma que nas grandes cidades, os(as) jovens petistas eleitos(as) são 70% negras(os)!
+
+```{r, message=FALSE, warning=FALSE}
+# 2020
+
+# Raca/Cor
+raca_cor_pt_por_porte_2020 <- vereadores_jovens_2020 %>%
+  ungroup() %>%
+  filter(SG_PARTIDO == "PT" & eleito == "Sim") %>%
+  group_by(porte_municipio) %>%
+  count(DS_COR_RACA) %>%
+  mutate(total = sum(n),
+         percentual = n / total * 100,
+         percentual = round(percentual, digits = 2)) %>%
+  mutate(porte_municipio = factor(porte_municipio, levels = c("Pequeno", "Médio", "Grande")))
+
+# Gráfico
+fig_raca_cor_pt_por_porte_2020 <- raca_cor_pt_por_porte_2020 %>%
+  group_by(DS_COR_RACA) %>%
+  plot_ly(x=~porte_municipio, y=~percentual,
+          type="scatter",color=~DS_COR_RACA, mode="lines+markers") %>%
+  layout(yaxis = list(range = c(0,100), title = "%"),
+         xaxis = list(title = "Porte do município"),
+         title = "Raça/cor dos(as) jovens vereadores(as) do PT\neleitos(as) por porte do município em 2020",
+         margin = list(t = 100))
+fig_raca_cor_pt_por_porte_2020
+
+# 2016
+
+# Raca/Cor
+raca_cor_pt_por_porte_2016 <- vereadores_jovens_2016 %>%
+  ungroup() %>%
+  filter(SG_PARTIDO == "PT" & eleito == "Sim") %>%
+  group_by(porte_municipio) %>%
+  count(DS_COR_RACA) %>%
+  mutate(total = sum(n),
+         percentual = n / total * 100,
+         percentual = round(percentual, digits = 2)) %>%
+  mutate(porte_municipio = factor(porte_municipio, levels = c("Pequeno", "Médio", "Grande")))
+
+# Gráfico
+fig_raca_cor_pt_por_porte_2016 <- raca_cor_pt_por_porte_2016 %>%
+  group_by(DS_COR_RACA) %>%
+  plot_ly(x=~porte_municipio, y=~percentual,
+          type="scatter",color=~DS_COR_RACA, mode="lines+markers") %>%
+  layout(yaxis = list(range = c(0,100), title = "%"),
+         xaxis = list(title = "Porte do município"),
+         title = "Raça/cor dos(as) jovens vereadores(as) do PT\neleitos(as) por porte do município em 2016",
+         margin = list(t = 100))
+fig_raca_cor_pt_por_porte_2016
+```
+
+Ao observarmos os dados do conjunto dos vereadores jovens eleitos de todos os partidos vemos, de novo, que isso se deu no PT.
+
+```{r, message=FALSE, warning=FALSE}
+# 2020
+
+# Geral
+# Raca/Cor
+raca_cor_geral_por_porte <- vereadores_jovens_2020 %>%
+  ungroup() %>%
+  filter(eleito == "Sim") %>%
+  group_by(porte_municipio) %>%
+  count(DS_COR_RACA) %>%
+  mutate(total = sum(n),
+         percentual = n / total * 100,
+         percentual = round(percentual, digits = 2)) %>%
+  mutate(porte_municipio = factor(porte_municipio, levels = c("Pequeno", "Médio", "Grande")))
+
+# Gráfico
+fig_raca_cor_geral_por_porte <- raca_cor_geral_por_porte %>%
+  group_by(DS_COR_RACA) %>%
+  plot_ly(x=~porte_municipio, y=~percentual,
+          type="scatter",color=~DS_COR_RACA, mode="lines+markers") %>%
+  layout(yaxis = list(range = c(0,100), title = "%"),
+         xaxis = list(title = "Porte do município"),
+         title = "Raça/cor dos(as) jovens vereadores(as) eleitos(as)\npor porte do município em 2020",
+         margin = list(t=100))
+fig_raca_cor_geral_por_porte
+
+
+```
+
+
+O Partido dos Trabalhadores teve nessas eleições de 2020 uma mudança qualitativa no perfil dos(as) canidatos(as) eleitos(as). Crescemos aonde precisávamos crescer, que é nas grandes cidades, e quem elegemos se parece muito mais com o conjunto do povo brasileiro do que quem elegiamos anteriormente. Essa mudança qualitativa do PT será fundamental para a reestruturação e o fortalecimento do partido e da esquerda brasileira.
+
+Veja como foi a votação dos jovens petistas nessa última eleição:
+```{r, message=FALSE, warning=FALSE}
+# Vereadores jovens do PT
+vereadores_jovens_pt <- vereadores_jovens_2020 %>%
+  filter(SG_PARTIDO == "PT") %>%
+  select(-SG_PARTIDO)
+
+# Salvar tabela com a lista dos vereadores eleitos pelo PT
+datatable(vereadores_jovens_pt,
+          filter = 'top',
+          colnames = c("UF", "Município","Candidata", "Porte do Município", "Votação",
+                                              "Gênero", "Cor/ raça", "Eleita?", "Perc de votos"),
+          caption = "Tabela com todos(as) os(as) candidatos a vereador jovens do PT em 2020") %>%
+  formatPercentage("percentual", 2) %>%
+  formatRound("votos_nominais", mark = ".", digits = 0)
+```
+
+
+O script utilizado para a compilação da informação pode ser acessado em https://github.com/alexandrefreitas92/analise_eleicoes2020.

@@ -2,6 +2,7 @@ library(tidyverse)
 library(openxlsx)
 library(readxl)
 library(DT)
+library(plotly)
 
 # Ler base de dados
 
@@ -21,6 +22,11 @@ candidatos_2020 <- read.csv("data/consulta_cand_2020_BRASIL.csv", sep = ";", fil
 eleitorado_2020 <- read.csv("data/eleitorado_local_votacao_2020.csv", sep = ";", fileEncoding = "Latin1")
 partidos_2020 <- read.csv("data/votacao_partido_munzona_2020_BRASIL.csv", sep = ";", fileEncoding = "Latin1")
 
+# Limpar dados
+eleitorado_2020 <- eleitorado_2020 %>%
+  group_by(CD_MUNICIPIO) %>%
+  summarise(total_eleitores = sum(QT_ELEITOR))
+
 # Dados estimativa populacional 2020
 brasil <- read_xls("/home/xedar/Documents/Trabalho/pop_2020.xls", sheet = 2)
 
@@ -37,8 +43,7 @@ brasil <- brasil %>%
   select(codigo_tse, `NOME DO MUNICÍPIO`, `POPULAÇÃO ESTIMADA`) %>%
   mutate(codigo_tse = as.integer(codigo_tse)) %>%
   rename(`Município` = `NOME DO MUNICÍPIO`) %>%
-  left_join(eleitorado_2020, by = c("codigo_tse" = "CD_MUNICIPIO")) %>%
-  select(-NM_MUNICIPIO)
+  left_join(eleitorado_2020, by = c("codigo_tse" = "CD_MUNICIPIO"))
 
 # Limpar base de candidatos
 candidatos_2020_2 <- candidatos_2020 %>%
@@ -119,6 +124,9 @@ vereadores_jovens <- votacao_2020_2 %>%
   arrange(-votos_nominais) %>%
   select(-c(situacao_eleicao, NR_IDADE_DATA_POSSE, votos_totais))
 
+# Escrever csv
+write_csv(vereadores_jovens, "data/vereadores_jovens_2020.csv")
+
 # Vereadores jovens do PT
 vereadores_jovens_pt <- vereadores_jovens %>%
   filter(SG_PARTIDO == "PT")
@@ -155,6 +163,7 @@ fig_genero_geral <- plot_ly(genero_geral, x = ~DS_GENERO, y = ~percentual, type 
   layout(yaxis = list(title = '%'),
          xaxis = list(title = 'Gênero'),
          title = "Gênero dos(as) jovens vereadores(as) eleitos(as) em 2020")
+
 fig_genero_geral
 saveWidget(fig_genero_geral, 'fig_genero_geral.html')
 # Raca/Cor
@@ -240,7 +249,8 @@ fig_genero_geral_por_porte <- genero_geral_por_porte %>%
           type="scatter",color=~DS_GENERO, mode="lines+markers") %>%
   layout(yaxis = list(range = c(0,100), title = "%"),
          xaxis = list(title = "Porte do município"),
-         title = "Gênero dos(as) jovens vereadores(as) eleitos(as) por porte do município em 2020")
+         title = "Gênero dos(as) jovens vereadores(as) eleitos(as) por porte do município em 2020",
+         margin = list(t = 100))
 fig_genero_geral_por_porte
 saveWidget(fig_genero_geral_por_porte, 'fig_genero_geral_por_porte.html')
 
@@ -372,6 +382,9 @@ vereadores_jovens_2016 <- votacao_2016_2 %>%
   filter(NR_IDADE_DATA_POSSE %in% c(15:35)) %>%
   arrange(-votos_nominais) %>%
   select(-c(situacao_eleicao, NR_IDADE_DATA_POSSE, votos_totais))
+
+# Escrever csv
+write_csv(vereadores_jovens_2016, "data/vereadores_jovens_2016.csv")
 
 # Vereadores jovens do PT
 vereadores_jovens_pt_2016 <- vereadores_jovens_2016 %>%

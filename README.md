@@ -4,4 +4,4 @@ Este repositório servirá para a análise do resultado das eleições dos joven
 
 O script analisa quem são, quantos são e qual o perfil dos jovens petistas eleitos nessa última candidatura. Entende-se aqui como jovem todas as pessoas de até 35 anos de idade, seguindo os mesmos parâmetros do Projeto "Representa" da JPT.
 
-A análise e o texto foi feito junto do meu amigo João Vitor Leite Rodrigues.
+A análise e o texto foram feitos junto do meu amigo João Vitor Leite Rodrigues.

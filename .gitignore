@@ -1,5 +1,6 @@
 .Rhistory
 .RData
+.Rproj.user
 
 data/consulta_cand_2016_BRASIL.csv
 data/consulta_cand_2020_BRASIL.csv

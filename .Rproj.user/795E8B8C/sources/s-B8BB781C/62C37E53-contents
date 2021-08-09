@@ -11,7 +11,8 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r Biblioteca, message=FALSE, warning=FALSE}
+```{r Biblioteca, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
 
 library(tidyverse)
 library(openxlsx)
